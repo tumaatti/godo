@@ -45,10 +45,10 @@ func createDirIfDoesNotExist(directoryName string) {
 func getHelp() string {
 	return "Godo is a simple TODO-tool\n" +
 		"Usage:\n" +
-		"    - --new -n <contents>  add new TODO row to database\n" +
-		"    - --list -l            list all existing TODOs\n" +
-		"    - --done -x <id>       mark TODO as done\n" +
-		"    - --delete -d <id>     delete existing TODO\n\n"
+		"    --new -n <contents>  add new TODO row to database\n" +
+		"    --list -l            list all existing TODOs\n" +
+		"    --done -x <id>       mark TODO as done\n" +
+		"    --delete -d <id>     delete existing TODO\n\n"
 }
 
 func main() {
