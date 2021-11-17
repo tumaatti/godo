@@ -42,14 +42,31 @@ func createDirIfDoesNotExist(directoryName string) {
 	}
 }
 
+func getHelp() string {
+	return "Godo is a simple TODO-tool\n" +
+		"Usage:\n" +
+		"    - --new -n <contents>  add new TODO row to database\n" +
+		"    - --list -l            list all existing TODOs\n" +
+		"    - --done -x <id>       mark TODO as done\n" +
+		"    - --delete -d <id>     delete existing TODO\n\n"
+}
+
 func main() {
+
+	if len(os.Args) < 2 {
+		fmt.Printf(getHelp())
+		return
+	}
+
 	command := os.Args[1]
 	args := os.Args[2:]
 
 	currentUser, err := user.Current()
+
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	homeDir := currentUser.HomeDir
 
 	directoryName := homeDir + "/.TODO"
@@ -67,7 +84,7 @@ func main() {
 
 	var todos []Todo
 
-	if command == "--new" {
+	if command == "--new" || command == "-n" {
 		if len(args) < 1 {
 			fmt.Println("Gimme content for the TODO")
 			return
@@ -77,7 +94,7 @@ func main() {
 		return
 	}
 
-	if command == "--list" {
+	if command == "--list" || command == "-l" {
 		db.Find(&todos)
 
 		var doneTable []*Row
@@ -105,32 +122,28 @@ func main() {
 		return
 	}
 
-	if command == "--done" {
+	if command == "--done" || command == "-x" {
 		if len(args) < 1 {
 			fmt.Println("Gimme number of the TODO to mark done")
 			return
 		}
 		id := args
 		db.Model(&Todo{}).Where("Id = ?", id).Update("Done", true)
+		return
 	}
 
-	if command == "--delete" {
+	if command == "--delete" || command == "-d" {
 		if len(args) < 1 {
 			fmt.Println("Gimme number of the TODO to remove")
 			return
 		}
 		id := args
 		db.Delete(&Todo{}, id)
+		return
 	}
 
 	if command == "--help" {
-		helpText :=
-			"Godo is a simple TODO-tool\n" +
-				"Usage:\n" +
-				"   - --new <contents> add new TODO row to database\n" +
-				"   - --list           list all existing TODOs\n" +
-				"   - --done <id>      mark TODO as done\n" +
-				"   - --delete <id>    delete existing TODO\n\n"
-		fmt.Printf(helpText)
+		fmt.Printf(getHelp())
+		return
 	}
 }
