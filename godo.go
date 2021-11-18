@@ -64,11 +64,13 @@ func isValidCommand(command string) bool {
 		"--edit",
 		"--list",
 		"--new",
+		"--tag",
 		"-d",
 		"-e",
 		"-h",
 		"-l",
 		"-n",
+		"-t",
 		"-x":
 
 		return true
@@ -205,7 +207,17 @@ func main() {
 
 	// --list -l
 	if ok {
-		db.Find(&todos)
+		args, ok := checkIfKeyExists(commands, "--tag", "-t")
+		if ok {
+			tags := args
+			db.Where("Tags = ?", tags).Find(&todos)
+		} else {
+			db.Find(&todos)
+		}
+
+		if len(todos) == 0 {
+			return
+		}
 
 		var doneTable []*Row
 		var unDoneTable []*Row
@@ -225,7 +237,9 @@ func main() {
 			fmt.Printf("%d  %s  %s  %s\n", t.Id, t.CreatedAt, t.Done, t.Content)
 		}
 
-		fmt.Println("")
+		if len(unDoneTable) != 0 {
+			fmt.Println("")
+		}
 
 		for _, t := range doneTable {
 			fmt.Printf("%d  %s  %s  %s\n", t.Id, t.CreatedAt, t.Done, t.Content)
