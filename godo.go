@@ -152,6 +152,10 @@ func formatTags(tags string) string {
 	return tags
 }
 
+func generateContents(todo Todo) string {
+	return "TAGS: " + todo.Tags + "\n" + todo.Content
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Printf(getHelp())
@@ -302,7 +306,7 @@ func main() {
 		tmpDir := os.TempDir()
 		filename := tmpDir + "/godofile.txt"
 
-		err := ioutil.WriteFile(filename, []byte(todo.Content), 0755)
+		err := ioutil.WriteFile(filename, []byte(generateContents(todo)), 0755)
 
 		if err != nil {
 			log.Fatal(err)
@@ -310,13 +314,20 @@ func main() {
 
 		editInNvim(filename)
 
-		content, err := ioutil.ReadFile(filename)
+		fileContent, err := ioutil.ReadFile(filename)
 
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		db.Model(&Todo{}).Where("Id = ?", id).Update("Content", content)
+		splitByLines := strings.Split(string(fileContent), "\n")
+		contentList := splitByLines[1:]
+		content := strings.Join(contentList, " ")
+
+		tagsRow := splitByLines[0]
+		tags := strings.Split(tagsRow, ": ")[1]
+
+		db.Model(todo).Where("Id = ?", id).Updates(Todo{Content: content, Tags: tags})
 
 		return
 	}
