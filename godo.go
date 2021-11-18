@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"os/user"
 	"strings"
 	"time"
@@ -46,6 +48,7 @@ func getHelp() string {
 	return "Godo is a simple TODO-tool\n" +
 		"Usage:\n" +
 		"    --new -n <contents>  add new TODO row to database\n" +
+		"    --edit -e <id>       edit existing TODO\n" +
 		"    --list -l            list all existing TODOs\n" +
 		"    --done -x <id>       mark TODO as done\n" +
 		"    --delete -d <id>     delete existing TODO\n\n"
@@ -54,17 +57,30 @@ func getHelp() string {
 func isValidCommand(command string) bool {
 	switch command {
 	case
-		"--new",
-		"-n",
-		"--list",
-		"-l",
-		"--done",
-		"-x",
 		"--delete",
-		"-d":
+		"--done",
+		"--edit",
+		"--list",
+		"--new",
+		"-d",
+		"-e",
+		"-l",
+		"-n",
+		"-x":
 		return true
 	}
 	return false
+}
+
+func editInNvim(filename string) {
+	cmd := exec.Command("nvim", filename)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func main() {
@@ -105,6 +121,7 @@ func main() {
 	db.AutoMigrate(&Todo{})
 
 	var todos []Todo
+	var todo Todo
 
 	if command == "--new" || command == "-n" {
 		if len(args) < 1 {
@@ -151,6 +168,37 @@ func main() {
 		}
 		id := args
 		db.Model(&Todo{}).Where("Id = ?", id).Update("Done", true)
+		return
+	}
+
+	if command == "--edit" || command == "-e" {
+		if len(args) < 1 {
+			fmt.Println("Gimme number of the TODO to edit")
+			return
+		}
+
+		id := args[0]
+		db.First(&todo, id)
+
+		tmpDir := os.TempDir()
+		filename := tmpDir + "/godofile.txt"
+
+		err := ioutil.WriteFile(filename, []byte(todo.Content), 0755)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		editInNvim(filename)
+
+		content, err := ioutil.ReadFile(filename)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		db.Model(&Todo{}).Where("Id = ?", id).Update("Content", content)
+
 		return
 	}
 
