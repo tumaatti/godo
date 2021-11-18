@@ -51,14 +51,36 @@ func getHelp() string {
 		"    --delete -d <id>     delete existing TODO\n\n"
 }
 
-func main() {
+func isValidCommand(command string) bool {
+	switch command {
+	case
+		"--new",
+		"-n",
+		"--list",
+		"-l",
+		"--done",
+		"-x",
+		"--delete",
+		"-d":
+		return true
+	}
+	return false
+}
 
+func main() {
 	if len(os.Args) < 2 {
 		fmt.Printf(getHelp())
 		return
 	}
 
 	command := os.Args[1]
+
+	if !isValidCommand(command) {
+		fmt.Printf("%s is not a valid argument\n", command)
+		fmt.Printf(getHelp())
+		return
+	}
+
 	args := os.Args[2:]
 
 	currentUser, err := user.Current()
