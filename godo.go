@@ -28,6 +28,7 @@ type Row struct {
 	CreatedAt string
 	Done      string
 	Content   string
+	Tags      string
 }
 
 func formatCheckMark(done bool) string {
@@ -144,6 +145,13 @@ func checkIfKeyExists(commands CommandMap, commandName string, shortCommandName 
 	return args, ok
 }
 
+func formatTags(tags string) string {
+	if len(tags) == 0 {
+		return "-"
+	}
+	return tags
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Printf(getHelp())
@@ -197,8 +205,16 @@ func main() {
 			return
 		}
 
+		tagArgs, ok := checkIfKeyExists(commands, "--tags", "-t")
+		var tags string
+		if !ok || len(tagArgs) == 0 {
+			tags = ""
+		} else {
+			tags = strings.Join(tagArgs, ", ")
+		}
+
 		new_todo := strings.Join(args, " ")
-		db.Create(&Todo{CreatedAt: time.Now().Local().Format(time.Stamp), Content: new_todo})
+		db.Create(&Todo{CreatedAt: time.Now().Local().Format(time.Stamp), Content: new_todo, Tags: tags})
 
 		return
 	}
@@ -227,14 +243,15 @@ func main() {
 			checkMark := formatCheckMark(t.Done)
 
 			if t.Done {
-				doneTable = append(doneTable, &Row{t.Id, t.CreatedAt, checkMark, firstLineOfContent})
+				doneTable = append(doneTable, &Row{t.Id, t.CreatedAt, checkMark, firstLineOfContent, t.Tags})
 			} else {
-				unDoneTable = append(unDoneTable, &Row{t.Id, t.CreatedAt, checkMark, firstLineOfContent})
+				unDoneTable = append(unDoneTable, &Row{t.Id, t.CreatedAt, checkMark, firstLineOfContent, t.Tags})
 			}
 		}
 
 		for _, t := range unDoneTable {
-			fmt.Printf("%d  %s  %s  %s\n", t.Id, t.CreatedAt, t.Done, t.Content)
+			tags := formatTags(t.Tags)
+			fmt.Printf("%d  %s  %s  %s   |   %s\n", t.Id, t.CreatedAt, t.Done, t.Content, tags)
 		}
 
 		if len(unDoneTable) != 0 {
@@ -242,7 +259,8 @@ func main() {
 		}
 
 		for _, t := range doneTable {
-			fmt.Printf("%d  %s  %s  %s\n", t.Id, t.CreatedAt, t.Done, t.Content)
+			tags := formatTags(t.Tags)
+			fmt.Printf("%d  %s  %s  %s   |   %s\n", t.Id, t.CreatedAt, t.Done, t.Content, tags)
 		}
 
 		if err != nil {
