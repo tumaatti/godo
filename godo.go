@@ -20,6 +20,7 @@ type Todo struct {
 	CreatedAt string
 	Content   string
 	Done      bool `gorm:"default:false"`
+	Tags      string
 }
 
 type Row struct {
@@ -65,6 +66,7 @@ func isValidCommand(command string) bool {
 		"--new",
 		"-d",
 		"-e",
+		"-h",
 		"-l",
 		"-n",
 		"-x":
@@ -88,6 +90,58 @@ func editInNvim(filename string) {
 	}
 }
 
+type CommandMap map[string][]string
+
+// TODO: maybe convert this to using Command struct type? Would it make this simpler?
+// also maybe use an interface for next etc in the list?
+func filterArguments(args []string) CommandMap {
+	var validCommandIndeces []int
+
+	for i, arg := range args {
+		if isValidCommand(arg) {
+			validCommandIndeces = append(validCommandIndeces, i)
+		}
+	}
+
+	var commandArgsMap = make(CommandMap)
+
+	if len(validCommandIndeces) == 1 {
+		command := args[validCommandIndeces[0]]
+		restOfArgs := args[validCommandIndeces[0]+1:]
+		commandArgsMap[command] = restOfArgs
+
+		return commandArgsMap
+	}
+
+	for i := range validCommandIndeces {
+		var restOfArgs []string
+		command := args[validCommandIndeces[i]]
+
+		if i < len(validCommandIndeces)-1 {
+			restOfArgs = args[validCommandIndeces[i]+1 : validCommandIndeces[i+1]]
+		} else {
+			restOfArgs = args[validCommandIndeces[i]+1:]
+		}
+
+		commandArgsMap[command] = restOfArgs
+	}
+
+	return commandArgsMap
+
+}
+
+func checkIfKeyExists(commands CommandMap, commandName string, shortCommandName string) ([]string, bool) {
+	args, ok := commands[commandName]
+
+	if ok {
+		return args, ok
+	}
+
+	args, ok = commands[shortCommandName]
+
+	return args, ok
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Printf(getHelp())
@@ -95,10 +149,11 @@ func main() {
 		return
 	}
 
-	command := os.Args[1]
+	// access commands `commands["--edit"]`
+	commands := filterArguments(os.Args)
 
-	if !isValidCommand(command) {
-		fmt.Printf("%s is not a valid argument\n", command)
+	if len(commands) == 0 {
+		fmt.Printf("Did not reveive any valid arguments\n")
 		fmt.Printf(getHelp())
 
 		return
@@ -130,19 +185,26 @@ func main() {
 	var todos []Todo
 	var todo Todo
 
-	if command == "--new" || command == "-n" {
+	args, ok := checkIfKeyExists(commands, "--new", "-n")
+
+	// --new -n
+	if ok {
 		if len(args) < 1 {
 			fmt.Println("Gimme content for the TODO")
 
 			return
 		}
+
 		new_todo := strings.Join(args, " ")
 		db.Create(&Todo{CreatedAt: time.Now().Local().Format(time.Stamp), Content: new_todo})
 
 		return
 	}
 
-	if command == "--list" || command == "-l" {
+	args, ok = checkIfKeyExists(commands, "--list", "-l")
+
+	// --list -l
+	if ok {
 		db.Find(&todos)
 
 		var doneTable []*Row
@@ -176,7 +238,10 @@ func main() {
 		return
 	}
 
-	if command == "--done" || command == "-x" {
+	args, ok = checkIfKeyExists(commands, "--done", "-x")
+
+	// --done -x
+	if ok {
 		if len(args) < 1 {
 			fmt.Println("Gimme number of the TODO to mark done")
 
@@ -189,7 +254,10 @@ func main() {
 		return
 	}
 
-	if command == "--edit" || command == "-e" {
+	args, ok = checkIfKeyExists(commands, "--edit", "-e")
+
+	// --edit -e
+	if ok {
 		if len(args) < 1 {
 			fmt.Println("Gimme number of the TODO to edit")
 
@@ -221,9 +289,13 @@ func main() {
 		return
 	}
 
-	if command == "--delete" || command == "-d" {
+	args, ok = checkIfKeyExists(commands, "--delete", "-d")
+
+	// --delete -d
+	if ok {
 		if len(args) < 1 {
 			fmt.Println("Gimme number of the TODO to remove")
+
 			return
 		}
 
@@ -233,7 +305,10 @@ func main() {
 		return
 	}
 
-	if command == "--help" {
+	args, ok = checkIfKeyExists(commands, "--help", "-h")
+
+	// --help
+	if ok {
 		fmt.Printf(getHelp())
 
 		return
