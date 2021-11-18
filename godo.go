@@ -39,6 +39,7 @@ func formatCheckMark(done bool) string {
 
 func createDirIfDoesNotExist(directoryName string) {
 	_, err := os.Stat(directoryName)
+
 	if os.IsNotExist(err) {
 		os.Mkdir(directoryName, 0755)
 	}
@@ -67,17 +68,21 @@ func isValidCommand(command string) bool {
 		"-l",
 		"-n",
 		"-x":
+
 		return true
 	}
+
 	return false
 }
 
 func editInNvim(filename string) {
 	cmd := exec.Command("nvim", filename)
+	// cmd needs the stdin etc to function correctly
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
+
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -86,6 +91,7 @@ func editInNvim(filename string) {
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Printf(getHelp())
+
 		return
 	}
 
@@ -94,6 +100,7 @@ func main() {
 	if !isValidCommand(command) {
 		fmt.Printf("%s is not a valid argument\n", command)
 		fmt.Printf(getHelp())
+
 		return
 	}
 
@@ -126,10 +133,12 @@ func main() {
 	if command == "--new" || command == "-n" {
 		if len(args) < 1 {
 			fmt.Println("Gimme content for the TODO")
+
 			return
 		}
 		new_todo := strings.Join(args, " ")
 		db.Create(&Todo{CreatedAt: time.Now().Local().Format(time.Stamp), Content: new_todo})
+
 		return
 	}
 
@@ -140,17 +149,22 @@ func main() {
 		var unDoneTable []*Row
 
 		for _, t := range todos {
+			firstLineOfContent := strings.Split(t.Content, "\n")[0]
+			checkMark := formatCheckMark(t.Done)
+
 			if t.Done {
-				doneTable = append(doneTable, &Row{t.Id, t.CreatedAt, formatCheckMark(t.Done), t.Content})
+				doneTable = append(doneTable, &Row{t.Id, t.CreatedAt, checkMark, firstLineOfContent})
 			} else {
-				unDoneTable = append(unDoneTable, &Row{t.Id, t.CreatedAt, formatCheckMark(t.Done), t.Content})
+				unDoneTable = append(unDoneTable, &Row{t.Id, t.CreatedAt, checkMark, firstLineOfContent})
 			}
 		}
 
 		for _, t := range unDoneTable {
 			fmt.Printf("%d  %s  %s  %s\n", t.Id, t.CreatedAt, t.Done, t.Content)
 		}
+
 		fmt.Println("")
+
 		for _, t := range doneTable {
 			fmt.Printf("%d  %s  %s  %s\n", t.Id, t.CreatedAt, t.Done, t.Content)
 		}
@@ -158,22 +172,27 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+
 		return
 	}
 
 	if command == "--done" || command == "-x" {
 		if len(args) < 1 {
 			fmt.Println("Gimme number of the TODO to mark done")
+
 			return
 		}
+
 		id := args
 		db.Model(&Todo{}).Where("Id = ?", id).Update("Done", true)
+
 		return
 	}
 
 	if command == "--edit" || command == "-e" {
 		if len(args) < 1 {
 			fmt.Println("Gimme number of the TODO to edit")
+
 			return
 		}
 
@@ -207,13 +226,16 @@ func main() {
 			fmt.Println("Gimme number of the TODO to remove")
 			return
 		}
+
 		id := args
 		db.Delete(&Todo{}, id)
+
 		return
 	}
 
 	if command == "--help" {
 		fmt.Printf(getHelp())
+
 		return
 	}
 }
