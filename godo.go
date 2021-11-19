@@ -23,14 +23,6 @@ type Todo struct {
 	Tags      string
 }
 
-type Row struct {
-	Id        int
-	CreatedAt string
-	Done      string
-	Content   string
-	Tags      string
-}
-
 func formatCheckMark(done bool) string {
 	if done {
 		return "[X]"
