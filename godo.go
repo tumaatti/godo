@@ -199,9 +199,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	db.AutoMigrate(&Todo{})
-
 	var todo Todo
+
+	db.AutoMigrate(&todo)
 
 	args, ok := checkIfKeyExists(commands, "--new", "-n")
 
@@ -276,7 +276,7 @@ func main() {
 		}
 
 		id := args
-		db.Model(&Todo{}).Where("Id = ?", id).Update("Done", true)
+		db.Model(todo).Where("Id = ?", id).Update("Done", true)
 		return
 	}
 
@@ -330,7 +330,7 @@ func main() {
 		}
 
 		id := args
-		db.Delete(&Todo{}, id)
+		db.Delete(&todo, id)
 		return
 	}
 
