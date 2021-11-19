@@ -60,12 +60,14 @@ func getHelp() string {
 func isValidCommand(command string) bool {
 	switch command {
 	case
+		"--created",
 		"--delete",
 		"--done",
 		"--edit",
 		"--list",
 		"--new",
 		"--tag",
+		"-c",
 		"-d",
 		"-e",
 		"-h",
@@ -156,6 +158,19 @@ func generateContents(todo Todo) string {
 	return "TAGS: " + todo.Tags + "\n" + todo.Content
 }
 
+func printRowString(commands CommandMap, t Todo) {
+	firstLineOfContent := strings.Split(t.Content, "\n")[0]
+	checkMark := formatCheckMark(t.Done)
+	tags := formatTags(t.Tags)
+
+	_, ok := checkIfKeyExists(commands, "--created", "-c")
+	if ok {
+		fmt.Printf("%d  %s  %s  %s   |   %s\n", t.Id, t.CreatedAt, checkMark, firstLineOfContent, tags)
+	} else {
+		fmt.Printf("%d  %s  %s   |   %s\n", t.Id, checkMark, firstLineOfContent, tags)
+	}
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Printf(getHelp())
@@ -196,7 +211,6 @@ func main() {
 
 	db.AutoMigrate(&Todo{})
 
-	var todos []Todo
 	var todo Todo
 
 	args, ok := checkIfKeyExists(commands, "--new", "-n")
@@ -227,44 +241,33 @@ func main() {
 
 	// --list -l
 	if ok {
+		var dones []Todo
+		var undones []Todo
+
 		args, ok := checkIfKeyExists(commands, "--tag", "-t")
 		if ok {
 			tags := args
-			db.Where("Tags = ?", tags).Find(&todos)
+			db.Where("Tags = ? AND Done = ?", tags, true).Find(&dones)
+			db.Where("Tags = ? AND Done = ?", tags, false).Find(&undones)
 		} else {
-			db.Find(&todos)
+			db.Where("Done = ?", true).Find(&dones)
+			db.Where("Done = ?", false).Find(&undones)
 		}
 
-		if len(todos) == 0 {
+		if len(dones) == 0 && len(undones) == 0 {
 			return
 		}
 
-		var doneTable []*Row
-		var unDoneTable []*Row
-
-		for _, t := range todos {
-			firstLineOfContent := strings.Split(t.Content, "\n")[0]
-			checkMark := formatCheckMark(t.Done)
-
-			if t.Done {
-				doneTable = append(doneTable, &Row{t.Id, t.CreatedAt, checkMark, firstLineOfContent, t.Tags})
-			} else {
-				unDoneTable = append(unDoneTable, &Row{t.Id, t.CreatedAt, checkMark, firstLineOfContent, t.Tags})
-			}
+		for _, t := range undones {
+			printRowString(commands, t)
 		}
 
-		for _, t := range unDoneTable {
-			tags := formatTags(t.Tags)
-			fmt.Printf("%d  %s  %s  %s   |   %s\n", t.Id, t.CreatedAt, t.Done, t.Content, tags)
-		}
-
-		if len(unDoneTable) != 0 {
+		if len(undones) != 0 {
 			fmt.Println("")
 		}
 
-		for _, t := range doneTable {
-			tags := formatTags(t.Tags)
-			fmt.Printf("%d  %s  %s  %s   |   %s\n", t.Id, t.CreatedAt, t.Done, t.Content, tags)
+		for _, t := range dones {
+			printRowString(commands, t)
 		}
 
 		if err != nil {
