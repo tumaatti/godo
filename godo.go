@@ -38,6 +38,7 @@ func (todo Todo) printRowString(commands CommandMap) {
 	tags := formatTags(todo.Tags)
 
 	_, ok := checkIfKeyExists(commands, "--created", "-c")
+
 	if ok {
 		fmt.Printf("%d  %s  %s  %s   |   %s\n", todo.Id, todo.CreatedAt, checkMark, firstLineOfContent, tags)
 	} else {
@@ -83,6 +84,7 @@ func isValidCommand(command string) bool {
 		"--list",
 		"--new",
 		"--tag",
+		"--view",
 		"-c",
 		"-d",
 		"-e",
@@ -90,11 +92,10 @@ func isValidCommand(command string) bool {
 		"-l",
 		"-n",
 		"-t",
+		"-v",
 		"-x":
-
 		return true
 	}
-
 	return false
 }
 
@@ -128,7 +129,6 @@ func filterArguments(args []string) CommandMap {
 		command := args[validCommandIndeces[0]]
 		restOfArgs := args[validCommandIndeces[0]+1:]
 		commandArgsMap[command] = restOfArgs
-
 		return commandArgsMap
 	}
 
@@ -146,7 +146,6 @@ func filterArguments(args []string) CommandMap {
 	}
 
 	return commandArgsMap
-
 }
 
 func checkIfKeyExists(commands CommandMap, commandName string, shortCommandName string) ([]string, bool) {
@@ -157,7 +156,6 @@ func checkIfKeyExists(commands CommandMap, commandName string, shortCommandName 
 	}
 
 	args, ok = commands[shortCommandName]
-
 	return args, ok
 }
 
@@ -171,7 +169,6 @@ func formatTags(tags string) string {
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Printf(getHelp())
-
 		return
 	}
 
@@ -181,7 +178,6 @@ func main() {
 	if len(commands) == 0 {
 		fmt.Printf("Did not reveive any valid arguments\n")
 		fmt.Printf(getHelp())
-
 		return
 	}
 
@@ -194,12 +190,9 @@ func main() {
 	}
 
 	homeDir := currentUser.HomeDir
-
 	directoryName := homeDir + "/.TODO"
 	createDirIfDoesNotExist(directoryName)
-
 	databasePath := directoryName + "/todos.db"
-
 	db, err := gorm.Open(sqlite.Open(databasePath), &gorm.Config{})
 
 	if err != nil {
@@ -216,12 +209,12 @@ func main() {
 	if ok {
 		if len(args) < 1 {
 			fmt.Println("Gimme content for the TODO")
-
 			return
 		}
 
 		tagArgs, ok := checkIfKeyExists(commands, "--tags", "-t")
 		var tags string
+
 		if !ok || len(tagArgs) == 0 {
 			tags = ""
 		} else {
@@ -230,7 +223,6 @@ func main() {
 
 		new_todo := strings.Join(args, " ")
 		db.Create(&Todo{CreatedAt: time.Now().Local().Format(time.Stamp), Content: new_todo, Tags: tags})
-
 		return
 	}
 
@@ -280,13 +272,11 @@ func main() {
 	if ok {
 		if len(args) < 1 {
 			fmt.Println("Gimme number of the TODO to mark done")
-
 			return
 		}
 
 		id := args
 		db.Model(&Todo{}).Where("Id = ?", id).Update("Done", true)
-
 		return
 	}
 
@@ -296,7 +286,6 @@ func main() {
 	if ok {
 		if len(args) < 1 {
 			fmt.Println("Gimme number of the TODO to edit")
-
 			return
 		}
 
@@ -328,7 +317,6 @@ func main() {
 		tags := strings.Split(tagsRow, ": ")[1]
 
 		db.Model(todo).Where("Id = ?", id).Updates(Todo{Content: content, Tags: tags})
-
 		return
 	}
 
@@ -338,13 +326,11 @@ func main() {
 	if ok {
 		if len(args) < 1 {
 			fmt.Println("Gimme number of the TODO to remove")
-
 			return
 		}
 
 		id := args
 		db.Delete(&Todo{}, id)
-
 		return
 	}
 
@@ -353,7 +339,20 @@ func main() {
 	// --help
 	if ok {
 		fmt.Printf(getHelp())
+		return
+	}
 
+	args, ok = checkIfKeyExists(commands, "--view", "-v")
+
+	// --view
+	if ok {
+		if len(args) < 1 {
+			fmt.Println("Gimme id to view")
+		}
+
+		id := args[0]
+		db.First(&todo, id)
+		fmt.Printf("TAGS: %s\n%s\n", todo.Tags, todo.Content)
 		return
 	}
 }
