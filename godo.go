@@ -29,6 +29,11 @@ func (todo Todo) generateContents() string {
 
 func (todo Todo) printRowString(commands CommandMap) {
 	firstLineOfContent := strings.Split(todo.Content, "\n")[0]
+
+	if len(firstLineOfContent) > 80 {
+		firstLineOfContent = firstLineOfContent[:80] + "..."
+	}
+
 	checkMark := formatCheckMark(todo.Done)
 	tags := formatTags(todo.Tags)
 
