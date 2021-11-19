@@ -23,6 +23,25 @@ type Todo struct {
 	Tags      string
 }
 
+func (todo Todo) generateContents() string {
+	return "TAGS: " + todo.Tags + "\n" + todo.Content
+}
+
+func (todo Todo) printRowString(commands CommandMap) {
+	firstLineOfContent := strings.Split(todo.Content, "\n")[0]
+	checkMark := formatCheckMark(todo.Done)
+	tags := formatTags(todo.Tags)
+
+	_, ok := checkIfKeyExists(commands, "--created", "-c")
+	if ok {
+		fmt.Printf("%d  %s  %s  %s   |   %s\n", todo.Id, todo.CreatedAt, checkMark, firstLineOfContent, tags)
+	} else {
+		fmt.Printf("%d  %s  %s   |   %s\n", todo.Id, checkMark, firstLineOfContent, tags)
+	}
+}
+
+type CommandMap map[string][]string
+
 func formatCheckMark(done bool) string {
 	if done {
 		return "[X]"
@@ -87,8 +106,6 @@ func editInNvim(filename string) {
 	}
 }
 
-type CommandMap map[string][]string
-
 // TODO: maybe convert this to using Command struct type? Would it make this simpler?
 // also maybe use an interface for next etc in the list?
 func filterArguments(args []string) CommandMap {
@@ -144,23 +161,6 @@ func formatTags(tags string) string {
 		return "-"
 	}
 	return tags
-}
-
-func generateContents(todo Todo) string {
-	return "TAGS: " + todo.Tags + "\n" + todo.Content
-}
-
-func printRowString(commands CommandMap, t Todo) {
-	firstLineOfContent := strings.Split(t.Content, "\n")[0]
-	checkMark := formatCheckMark(t.Done)
-	tags := formatTags(t.Tags)
-
-	_, ok := checkIfKeyExists(commands, "--created", "-c")
-	if ok {
-		fmt.Printf("%d  %s  %s  %s   |   %s\n", t.Id, t.CreatedAt, checkMark, firstLineOfContent, tags)
-	} else {
-		fmt.Printf("%d  %s  %s   |   %s\n", t.Id, checkMark, firstLineOfContent, tags)
-	}
 }
 
 func main() {
@@ -251,7 +251,7 @@ func main() {
 		}
 
 		for _, t := range undones {
-			printRowString(commands, t)
+			t.printRowString(commands)
 		}
 
 		if len(undones) != 0 {
@@ -259,7 +259,7 @@ func main() {
 		}
 
 		for _, t := range dones {
-			printRowString(commands, t)
+			t.printRowString(commands)
 		}
 
 		if err != nil {
@@ -301,7 +301,7 @@ func main() {
 		tmpDir := os.TempDir()
 		filename := tmpDir + "/godofile.txt"
 
-		err := ioutil.WriteFile(filename, []byte(generateContents(todo)), 0755)
+		err := ioutil.WriteFile(filename, []byte(todo.generateContents()), 0755)
 
 		if err != nil {
 			log.Fatal(err)
