@@ -24,7 +24,7 @@ type Todo struct {
 }
 
 func (todo Todo) generateContents() string {
-	return "TAGS: " + todo.Tags + "\n" + todo.Content
+	return "DONE: " + formatCheckMark(todo.Done) + "; TAGS: " + todo.Tags + "\n" + todo.Content
 }
 
 func (todo Todo) printRowString(commands CommandMap) {
@@ -54,6 +54,17 @@ func formatCheckMark(done bool) string {
 	} else {
 		return "[ ]"
 	}
+}
+
+func unFormatCheckMark(checkMark string) bool {
+	if checkMark == "[X]" || checkMark == "[x]" {
+		return true
+	}
+	if checkMark == "[ ]" || checkMark == "[]" {
+		return false
+	}
+	log.Fatalf("syntax error, no checkbox found\n")
+	return false
 }
 
 func createDirIfDoesNotExist(directoryName string) {
@@ -311,12 +322,22 @@ func main() {
 
 		splitByLines := strings.Split(string(fileContent), "\n")
 		contentList := splitByLines[1:]
-		content := strings.Join(contentList, " ")
+		content := strings.Join(contentList, "\n")
 
 		tagsRow := splitByLines[0]
-		tags := strings.Split(tagsRow, ": ")[1]
+		splitTagsRow := strings.Split(tagsRow, ";")
+		checkBox := strings.TrimSpace(strings.Split(splitTagsRow[0], ":")[1])
+		done := unFormatCheckMark(checkBox)
+		tagsList := strings.Split(splitTagsRow[1], ":")
+		var tags string
 
-		db.Model(todo).Where("Id = ?", id).Updates(Todo{Content: content, Tags: tags})
+		if len(tagsList) < 2 {
+			tags = ""
+		} else {
+			tags = strings.TrimSpace(tagsList[1])
+		}
+
+		db.Model(&todo).Where("Id = ?", id).Updates(map[string]interface{}{"Content": content, "Tags": tags, "Done": done})
 		return
 	}
 
