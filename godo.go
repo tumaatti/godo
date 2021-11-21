@@ -177,6 +177,35 @@ func formatTags(tags string) string {
 	return tags
 }
 
+func createNewTmpFile(todo Todo, filepath string) error {
+	fmt.Println(filepath)
+	return ioutil.WriteFile(filepath, []byte(todo.generateContents()), 0755)
+}
+
+func parseFile(fileContent []byte) (string, string, bool) {
+	var tags string
+
+	splitByLines := strings.Split(string(fileContent), "\n")
+	contentList := splitByLines[1:]
+	content := strings.Join(contentList, "\n")
+
+	tagsRow := splitByLines[0]
+	splitTagsRow := strings.Split(tagsRow, ";")
+
+	checkBox := strings.TrimSpace(strings.Split(splitTagsRow[0], ":")[1])
+	done := unFormatCheckMark(checkBox)
+
+	tagsList := strings.Split(splitTagsRow[1], ":")
+
+	if len(tagsList) < 2 {
+		tags = ""
+	} else {
+		tags = strings.TrimSpace(tagsList[1])
+	}
+
+	return content, tags, done
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Printf(getHelp())
@@ -195,6 +224,10 @@ func main() {
 	args := os.Args[2:]
 
 	currentUser, err := user.Current()
+
+	tmpDir := os.TempDir()
+	TmpFileName := "/godofile.txt"
+	TmpFilePath := tmpDir + TmpFileName
 
 	if err != nil {
 		log.Fatal(err)
@@ -218,10 +251,16 @@ func main() {
 
 	// --new -n
 	if ok {
-		if len(args) < 1 {
+		_, editok := checkIfKeyExists(commands, "--edit", "-e")
+
+		if len(args) < 1 && !editok {
 			fmt.Println("Gimme content for the TODO")
 			return
 		}
+
+		// default done to false, but possible to have it done during
+		// if edited on creation
+		done := false
 
 		tagArgs, ok := checkIfKeyExists(commands, "--tags", "-t")
 		var tags string
@@ -232,8 +271,37 @@ func main() {
 			tags = strings.Join(tagArgs, ", ")
 		}
 
-		new_todo := strings.Join(args, " ")
-		db.Create(&Todo{CreatedAt: time.Now().Local().Format(time.Stamp), Content: new_todo, Tags: tags})
+		content := strings.Join(args, " ")
+
+		todo = Todo{
+			Content: content,
+			Tags:    tags,
+			Done:    false,
+		}
+
+		if editok {
+			err := createNewTmpFile(todo, TmpFilePath)
+
+			if err != nil {
+				log.Fatalf("%+v\n", err)
+			}
+
+			editInNvim(TmpFilePath)
+			fileContent, err := ioutil.ReadFile(TmpFilePath)
+
+			if err != nil {
+				log.Fatalf("%+v\n", err)
+			}
+
+			content, tags, done = parseFile(fileContent)
+		}
+
+		db.Create(&Todo{
+			CreatedAt: time.Now().Local().Format(time.Stamp),
+			Content:   content,
+			Tags:      tags,
+			Done:      done,
+		})
 		return
 	}
 
@@ -303,39 +371,20 @@ func main() {
 		id := args[0]
 		db.First(&todo, id)
 
-		tmpDir := os.TempDir()
-		filename := tmpDir + "/godofile.txt"
-
-		err := ioutil.WriteFile(filename, []byte(todo.generateContents()), 0755)
+		err := createNewTmpFile(todo, TmpFilePath)
 
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		editInNvim(filename)
-
-		fileContent, err := ioutil.ReadFile(filename)
+		editInNvim(TmpFilePath)
+		fileContent, err := ioutil.ReadFile(TmpFilePath)
 
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		splitByLines := strings.Split(string(fileContent), "\n")
-		contentList := splitByLines[1:]
-		content := strings.Join(contentList, "\n")
-
-		tagsRow := splitByLines[0]
-		splitTagsRow := strings.Split(tagsRow, ";")
-		checkBox := strings.TrimSpace(strings.Split(splitTagsRow[0], ":")[1])
-		done := unFormatCheckMark(checkBox)
-		tagsList := strings.Split(splitTagsRow[1], ":")
-		var tags string
-
-		if len(tagsList) < 2 {
-			tags = ""
-		} else {
-			tags = strings.TrimSpace(tagsList[1])
-		}
+		content, tags, done := parseFile(fileContent)
 
 		db.Model(&todo).Where("Id = ?", id).Updates(map[string]interface{}{"Content": content, "Tags": tags, "Done": done})
 		return
