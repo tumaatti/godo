@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,7 +28,7 @@ func (todo Todo) generateContents() string {
 	return "DONE: " + formatCheckMark(todo.Done) + "; TAGS: " + todo.Tags + "\n" + todo.Content
 }
 
-func (todo Todo) printRowString(commands CommandMap) {
+func (todo Todo) printRowString(commands CommandMap, Cok bool, maxLen int) {
 	firstLineOfContent := strings.Split(todo.Content, "\n")[0]
 
 	if len(firstLineOfContent) > 80 {
@@ -37,12 +38,27 @@ func (todo Todo) printRowString(commands CommandMap) {
 	checkMark := formatCheckMark(todo.Done)
 	tags := formatTags(todo.Tags)
 
-	_, ok := checkIfKeyExists(commands, "--created", "-c")
+	paddingLen := maxLen - len(strconv.Itoa(todo.Id))
 
-	if ok {
-		fmt.Printf("%d  %s  %s  %s   |   %s\n", todo.Id, todo.CreatedAt, checkMark, firstLineOfContent, tags)
+	paddedSpaces := strings.Repeat(" ", paddingLen)
+
+	if Cok {
+		fmt.Printf("%d %s %s  %s  %s   |   %s\n",
+			todo.Id,
+			paddedSpaces,
+			todo.CreatedAt,
+			checkMark,
+			firstLineOfContent,
+			tags,
+		)
 	} else {
-		fmt.Printf("%d  %s  %s   |   %s\n", todo.Id, checkMark, firstLineOfContent, tags)
+		fmt.Printf("%d %s %s  %s   |   %s\n",
+			todo.Id,
+			paddedSpaces,
+			checkMark,
+			firstLineOfContent,
+			tags,
+		)
 	}
 }
 
@@ -82,7 +98,9 @@ func getHelp() string {
 		"    --edit -e <id>       edit existing TODO\n" +
 		"    --list -l            list all existing TODOs\n" +
 		"    --done -x <id>       mark TODO as done\n" +
-		"    --delete -d <id>     delete existing TODO\n\n"
+		"    --delete -d <id>     delete existing TODO\n" +
+		"    --view -v <id>       view single TODO\n" +
+		"    --tags -t            add and sort by tags\n"
 }
 
 func isValidCommand(command string) bool {
@@ -206,6 +224,16 @@ func parseFile(fileContent []byte) (string, string, bool) {
 	return content, tags, done
 }
 
+func findMaxIdLength(todos []Todo) int {
+	maxId := 0
+	for _, r := range todos {
+		if r.Id > maxId {
+			maxId = r.Id
+		}
+	}
+	return len(strconv.Itoa(maxId))
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Printf(getHelp())
@@ -326,8 +354,14 @@ func main() {
 			return
 		}
 
+		_, Cok := checkIfKeyExists(commands, "--created", "-c")
+
+		todos := append(dones, undones...)
+
+		maxLen := findMaxIdLength(todos)
+
 		for _, t := range undones {
-			t.printRowString(commands)
+			t.printRowString(commands, Cok, maxLen)
 		}
 
 		if len(undones) != 0 {
@@ -335,7 +369,7 @@ func main() {
 		}
 
 		for _, t := range dones {
-			t.printRowString(commands)
+			t.printRowString(commands, Cok, maxLen)
 		}
 
 		if err != nil {
