@@ -213,7 +213,6 @@ func filterArguments(args []string) CommandMap {
 
 		commandArgsMap[command] = restOfArgs
 	}
-
 	return commandArgsMap
 }
 
@@ -248,7 +247,7 @@ func main() {
 	commands := filterArguments(os.Args)
 
 	if len(commands) == 0 {
-		fmt.Printf("Did not reveive any valid arguments\n")
+		fmt.Printf("Did not receive any valid arguments\n")
 		fmt.Printf(getHelp())
 		return
 	}
