@@ -62,8 +62,6 @@ func (todo Todo) printRowString(commands CommandMap, Cok bool, maxLen int) {
 	}
 }
 
-type CommandMap map[string][]string
-
 func formatCheckMark(done bool) string {
 	if done {
 		return "[X]"
@@ -83,12 +81,54 @@ func unFormatCheckMark(checkMark string) bool {
 	return false
 }
 
-func createDirIfDoesNotExist(directoryName string) {
-	_, err := os.Stat(directoryName)
+type File struct {
+	filepath string
+	content  []byte
+}
+
+func (file File) createDirIfDoesNotExist() {
+	_, err := os.Stat(file.filepath)
 
 	if os.IsNotExist(err) {
-		os.Mkdir(directoryName, 0755)
+		os.Mkdir(file.filepath, 0755)
 	}
+}
+
+func (file File) editInNvim() {
+	cmd := exec.Command("nvim", file.filepath)
+	// cmd needs the stdin etc to function correctly
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func (file File) parseFile() (string, string, bool) {
+	var tags string
+
+	splitByLines := strings.Split(string(file.content), "\n")
+	contentList := splitByLines[1:]
+	content := strings.Join(contentList, "\n")
+
+	tagsRow := splitByLines[0]
+	splitTagsRow := strings.Split(tagsRow, ";")
+
+	checkBox := strings.TrimSpace(strings.Split(splitTagsRow[0], ":")[1])
+	done := unFormatCheckMark(checkBox)
+
+	tagsList := strings.Split(splitTagsRow[1], ":")
+
+	if len(tagsList) < 2 {
+		tags = ""
+	} else {
+		tags = strings.TrimSpace(tagsList[1])
+	}
+
+	return content, tags, done
 }
 
 func getHelp() string {
@@ -101,6 +141,19 @@ func getHelp() string {
 		"    --delete -d <id>     delete existing TODO\n" +
 		"    --view -v <id>       view single TODO\n" +
 		"    --tags -t            add and sort by tags\n"
+}
+
+type CommandMap map[string][]string
+
+func (commands CommandMap) getKeyArgs(commandName string, shortCommandName string) ([]string, bool) {
+	args, ok := commands[commandName]
+
+	if ok {
+		return args, ok
+	}
+
+	args, ok = commands[shortCommandName]
+	return args, ok
 }
 
 func isValidCommand(command string) bool {
@@ -126,19 +179,6 @@ func isValidCommand(command string) bool {
 		return true
 	}
 	return false
-}
-
-func editInNvim(filename string) {
-	cmd := exec.Command("nvim", filename)
-	// cmd needs the stdin etc to function correctly
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err := cmd.Run()
-
-	if err != nil {
-		log.Fatal(err)
-	}
 }
 
 // TODO: maybe convert this to using Command struct type? Would it make this simpler?
@@ -177,17 +217,6 @@ func filterArguments(args []string) CommandMap {
 	return commandArgsMap
 }
 
-func checkIfKeyExists(commands CommandMap, commandName string, shortCommandName string) ([]string, bool) {
-	args, ok := commands[commandName]
-
-	if ok {
-		return args, ok
-	}
-
-	args, ok = commands[shortCommandName]
-	return args, ok
-}
-
 func formatTags(tags string) string {
 	if len(tags) == 0 {
 		return "-"
@@ -196,32 +225,7 @@ func formatTags(tags string) string {
 }
 
 func createNewTmpFile(todo Todo, filepath string) error {
-	fmt.Println(filepath)
 	return ioutil.WriteFile(filepath, []byte(todo.generateContents()), 0755)
-}
-
-func parseFile(fileContent []byte) (string, string, bool) {
-	var tags string
-
-	splitByLines := strings.Split(string(fileContent), "\n")
-	contentList := splitByLines[1:]
-	content := strings.Join(contentList, "\n")
-
-	tagsRow := splitByLines[0]
-	splitTagsRow := strings.Split(tagsRow, ";")
-
-	checkBox := strings.TrimSpace(strings.Split(splitTagsRow[0], ":")[1])
-	done := unFormatCheckMark(checkBox)
-
-	tagsList := strings.Split(splitTagsRow[1], ":")
-
-	if len(tagsList) < 2 {
-		tags = ""
-	} else {
-		tags = strings.TrimSpace(tagsList[1])
-	}
-
-	return content, tags, done
 }
 
 func findMaxIdLength(todos []Todo) int {
@@ -249,13 +253,13 @@ func main() {
 		return
 	}
 
-	args := os.Args[2:]
-
 	currentUser, err := user.Current()
 
 	tmpDir := os.TempDir()
 	TmpFileName := "/godofile.txt"
 	TmpFilePath := tmpDir + TmpFileName
+
+	TmpFile := File{filepath: TmpFilePath}
 
 	if err != nil {
 		log.Fatal(err)
@@ -263,9 +267,12 @@ func main() {
 
 	homeDir := currentUser.HomeDir
 	directoryName := homeDir + "/.TODO"
-	createDirIfDoesNotExist(directoryName)
-	databasePath := directoryName + "/todos.db"
-	db, err := gorm.Open(sqlite.Open(databasePath), &gorm.Config{})
+	filepath := directoryName + "/todos.db"
+
+	dbFile := File{filepath: filepath}
+	dbFile.createDirIfDoesNotExist()
+
+	db, err := gorm.Open(sqlite.Open(dbFile.filepath), &gorm.Config{})
 
 	if err != nil {
 		log.Fatal(err)
@@ -275,11 +282,11 @@ func main() {
 
 	db.AutoMigrate(&todo)
 
-	args, ok := checkIfKeyExists(commands, "--new", "-n")
+	args, ok := commands.getKeyArgs("--new", "-n")
 
 	// --new -n
 	if ok {
-		_, editok := checkIfKeyExists(commands, "--edit", "-e")
+		_, editok := commands.getKeyArgs("--edit", "-e")
 
 		if len(args) < 1 && !editok {
 			fmt.Println("Gimme content for the TODO")
@@ -290,7 +297,7 @@ func main() {
 		// if edited on creation
 		done := false
 
-		tagArgs, ok := checkIfKeyExists(commands, "--tags", "-t")
+		tagArgs, ok := commands.getKeyArgs("--tags", "-t")
 		var tags string
 
 		if !ok || len(tagArgs) == 0 {
@@ -308,20 +315,20 @@ func main() {
 		}
 
 		if editok {
-			err := createNewTmpFile(todo, TmpFilePath)
+			err := createNewTmpFile(todo, TmpFile.filepath)
 
 			if err != nil {
 				log.Fatalf("%+v\n", err)
 			}
 
-			editInNvim(TmpFilePath)
-			fileContent, err := ioutil.ReadFile(TmpFilePath)
+			TmpFile.editInNvim()
+			TmpFile.content, err = ioutil.ReadFile(TmpFilePath)
 
 			if err != nil {
 				log.Fatalf("%+v\n", err)
 			}
 
-			content, tags, done = parseFile(fileContent)
+			content, tags, done = TmpFile.parseFile()
 		}
 
 		db.Create(&Todo{
@@ -333,14 +340,14 @@ func main() {
 		return
 	}
 
-	args, ok = checkIfKeyExists(commands, "--list", "-l")
+	args, ok = commands.getKeyArgs("--list", "-l")
 
 	// --list -l
 	if ok {
 		var dones []Todo
 		var undones []Todo
 
-		args, ok := checkIfKeyExists(commands, "--tag", "-t")
+		args, ok := commands.getKeyArgs("--tag", "-t")
 		if ok {
 			tags := args
 			db.Where("Tags = ? AND Done = ?", tags, true).Find(&dones)
@@ -354,7 +361,7 @@ func main() {
 			return
 		}
 
-		_, Cok := checkIfKeyExists(commands, "--created", "-c")
+		_, Cok := commands.getKeyArgs("--created", "-c")
 
 		todos := append(dones, undones...)
 
@@ -379,7 +386,7 @@ func main() {
 		return
 	}
 
-	args, ok = checkIfKeyExists(commands, "--done", "-x")
+	args, ok = commands.getKeyArgs("--done", "-x")
 
 	// --done -x
 	if ok {
@@ -393,7 +400,7 @@ func main() {
 		return
 	}
 
-	args, ok = checkIfKeyExists(commands, "--edit", "-e")
+	args, ok = commands.getKeyArgs("--edit", "-e")
 
 	// --edit -e
 	if ok {
@@ -405,26 +412,26 @@ func main() {
 		id := args[0]
 		db.First(&todo, id)
 
-		err := createNewTmpFile(todo, TmpFilePath)
+		err := createNewTmpFile(todo, TmpFile.filepath)
 
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		editInNvim(TmpFilePath)
-		fileContent, err := ioutil.ReadFile(TmpFilePath)
+		TmpFile.editInNvim()
+		TmpFile.content, err = ioutil.ReadFile(TmpFile.filepath)
 
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		content, tags, done := parseFile(fileContent)
+		content, tags, done := TmpFile.parseFile()
 
 		db.Model(&todo).Where("Id = ?", id).Updates(map[string]interface{}{"Content": content, "Tags": tags, "Done": done})
 		return
 	}
 
-	args, ok = checkIfKeyExists(commands, "--delete", "-d")
+	args, ok = commands.getKeyArgs("--delete", "-d")
 
 	// --delete -d
 	if ok {
@@ -438,7 +445,7 @@ func main() {
 		return
 	}
 
-	args, ok = checkIfKeyExists(commands, "--help", "-h")
+	args, ok = commands.getKeyArgs("--help", "-h")
 
 	// --help
 	if ok {
@@ -446,7 +453,7 @@ func main() {
 		return
 	}
 
-	args, ok = checkIfKeyExists(commands, "--view", "-v")
+	args, ok = commands.getKeyArgs("--view", "-v")
 
 	// --view
 	if ok {
