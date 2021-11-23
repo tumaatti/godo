@@ -357,6 +357,7 @@ func main() {
 		}
 
 		if len(dones) == 0 && len(undones) == 0 {
+			fmt.Println("No todos found")
 			return
 		}
 
