@@ -1,4 +1,4 @@
-package godo
+package main
 
 import (
 	"fmt"
@@ -60,6 +60,10 @@ func (todo Todo) printRowString(commands CommandMap, Cok bool, maxLen int) {
 			tags,
 		)
 	}
+}
+
+func (todo Todo) createNewTmpFile(filepath string) error {
+	return ioutil.WriteFile(filepath, []byte(todo.generateContents()), 0755)
 }
 
 func formatCheckMark(done bool) string {
@@ -223,10 +227,6 @@ func formatTags(tags string) string {
 	return tags
 }
 
-func createNewTmpFile(todo Todo, filepath string) error {
-	return ioutil.WriteFile(filepath, []byte(todo.generateContents()), 0755)
-}
-
 func findMaxIdLength(todos []Todo) int {
 	maxId := 0
 	for _, r := range todos {
@@ -314,7 +314,7 @@ func main() {
 		}
 
 		if editok {
-			err := createNewTmpFile(todo, TmpFile.filepath)
+			err := todo.createNewTmpFile(TmpFile.filepath)
 
 			if err != nil {
 				log.Fatalf("%+v\n", err)
@@ -395,7 +395,8 @@ func main() {
 		}
 
 		id := args
-		db.Model(todo).Where("Id = ?", id).Update("Done", true)
+
+		db.Table("todos").Where("Id IN ?", id).Updates(map[string]interface{}{"Done": true})
 		return
 	}
 
@@ -411,7 +412,7 @@ func main() {
 		id := args[0]
 		db.First(&todo, id)
 
-		err := createNewTmpFile(todo, TmpFile.filepath)
+		err := todo.createNewTmpFile(TmpFile.filepath)
 
 		if err != nil {
 			log.Fatal(err)
