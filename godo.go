@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"os/exec"
 	"os/user"
 	"strconv"
 	"strings"
@@ -14,57 +13,6 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
-
-type Todo struct {
-	gorm.Model
-	Id        int `gorm:"primaryKey"`
-	CreatedAt string
-	Content   string
-	Done      bool `gorm:"default:false"`
-	Tags      string
-}
-
-func (todo Todo) generateContents() string {
-	return "DONE: " + formatCheckMark(todo.Done) + "; TAGS: " + todo.Tags + "\n" + todo.Content
-}
-
-func (todo Todo) printRowString(commands CommandMap, Cok bool, maxLen int) {
-	firstLineOfContent := strings.Split(todo.Content, "\n")[0]
-
-	if len(firstLineOfContent) > 80 {
-		firstLineOfContent = firstLineOfContent[:80] + "..."
-	}
-
-	checkMark := formatCheckMark(todo.Done)
-	tags := formatTags(todo.Tags)
-
-	paddingLen := maxLen - len(strconv.Itoa(todo.Id))
-
-	paddedSpaces := strings.Repeat(" ", paddingLen)
-
-	if Cok {
-		fmt.Printf("%d %s %s  %s  %s   |   %s\n",
-			todo.Id,
-			paddedSpaces,
-			todo.CreatedAt,
-			checkMark,
-			firstLineOfContent,
-			tags,
-		)
-	} else {
-		fmt.Printf("%d %s %s  %s   |   %s\n",
-			todo.Id,
-			paddedSpaces,
-			checkMark,
-			firstLineOfContent,
-			tags,
-		)
-	}
-}
-
-func (todo Todo) createNewTmpFile(filepath string) error {
-	return ioutil.WriteFile(filepath, []byte(todo.generateContents()), 0755)
-}
 
 func formatCheckMark(done bool) string {
 	if done {
@@ -83,56 +31,6 @@ func unFormatCheckMark(checkMark string) bool {
 	}
 	log.Fatalf("syntax error, no checkbox found\n")
 	return false
-}
-
-type File struct {
-	filepath string
-	content  []byte
-}
-
-func (file File) createDirIfDoesNotExist() {
-	_, err := os.Stat(file.filepath)
-
-	if os.IsNotExist(err) {
-		os.Mkdir(file.filepath, 0755)
-	}
-}
-
-func (file File) editInNvim() {
-	cmd := exec.Command("nvim", file.filepath)
-	// cmd needs the stdin etc to function correctly
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err := cmd.Run()
-
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func (file File) parseFile() (string, string, bool) {
-	var tags string
-
-	splitByLines := strings.Split(string(file.content), "\n")
-	contentList := splitByLines[1:]
-	content := strings.Join(contentList, "\n")
-
-	tagsRow := splitByLines[0]
-	splitTagsRow := strings.Split(tagsRow, ";")
-
-	checkBox := strings.TrimSpace(strings.Split(splitTagsRow[0], ":")[1])
-	done := unFormatCheckMark(checkBox)
-
-	tagsList := strings.Split(splitTagsRow[1], ":")
-
-	if len(tagsList) < 2 {
-		tags = ""
-	} else {
-		tags = strings.TrimSpace(tagsList[1])
-	}
-
-	return content, tags, done
 }
 
 func getHelp() string {
