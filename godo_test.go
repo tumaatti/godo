@@ -1,4 +1,4 @@
-package godo
+package main
 
 import (
 	"testing"
@@ -67,12 +67,28 @@ func TestFilterArgsList(t *testing.T) {
 	args, ok := commands[arg]
 
 	if !ok || len(args) != 0 {
-		t.Fatalf(`ok = %t, len(args)=%d expected: ok = true len(args) = 0`, ok, len(args))
+		t.Fatalf(`ok = %t, len(args) = %d expected: ok = true len(args) = 0`, ok, len(args))
 	}
 }
 
 func TestFilterArgsListTags(t *testing.T) {
-	// testArgs := []string{"--list", "--tags", "penis"}
+	testArgs := []string{"--list", "--tag", "penis"}
+	commands := filterArguments(testArgs)
+
+	listArgs, listOk := commands["--list"]
+
+	if !listOk || len(listArgs) != 0 {
+		t.Fatalf(`ok = %t, len(args) = %d expected: ok = true len(args) = 0`, listOk, len(listArgs))
+	}
+
+	tagsArgs, tagsOk := commands["--tag"]
+
+	wanted := "penis"
+
+	if !tagsOk || tagsArgs[0] != wanted {
+		t.Fatalf(`ok = %t, tagsArgs = %q expected: ok = true tagsArgs[0] = penis`, tagsOk, tagsArgs[0])
+	}
+
 }
 
 func TestGetKeyArgs(t *testing.T) {
