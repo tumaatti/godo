@@ -135,6 +135,41 @@ func findMaxIdLength(todos []Todo) int {
 	return len(strconv.Itoa(maxId))
 }
 
+func slicesEqual(s1, s2 []string) bool {
+	if len(s1) != len(s2) {
+		return false
+	}
+
+	for i, v := range s1 {
+		if v != s2[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func isExistingId(db *gorm.DB, inputIds []string) bool {
+	var dbTodos []Todo
+
+	existingIds := make(map[int]bool)
+	db.Select("id").Find(&dbTodos)
+
+	for _, v := range dbTodos {
+		existingIds[v.Id] = true
+	}
+
+	var matchingIds []string
+	for _, id := range inputIds {
+		id_i, _ := strconv.Atoi(id)
+		if _, ok := existingIds[id_i]; ok {
+			matchingIds = append(matchingIds, strconv.Itoa(id_i))
+		}
+	}
+
+	return slicesEqual(matchingIds, inputIds)
+
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Printf(getHelp())
@@ -293,13 +328,16 @@ func main() {
 	// --done -x
 	if ok {
 		if len(args) < 1 {
-			fmt.Println("Gimme number of the TODO to mark done")
+			fmt.Println("Gimme ID of the TODO to mark done")
 			return
 		}
 
-		id := args
+		if !isExistingId(db, args) {
+			fmt.Println("ID does not exist")
+			return
+		}
 
-		db.Table("todos").Where("Id IN ?", id).Updates(map[string]interface{}{"Done": true})
+		db.Table("todos").Where("Id IN ?", args).Updates(map[string]interface{}{"Done": true})
 		return
 	}
 
@@ -309,6 +347,11 @@ func main() {
 	if ok {
 		if len(args) < 1 {
 			fmt.Println("Gimme number of the TODO to edit")
+			return
+		}
+
+		if !isExistingId(db, args) {
+			fmt.Println("ID does not exist")
 			return
 		}
 
@@ -348,6 +391,11 @@ func main() {
 			return
 		}
 
+		if !isExistingId(db, args) {
+			fmt.Println("ID does not exist")
+			return
+		}
+
 		id := args
 		db.Delete(&todo, id)
 		return
@@ -367,6 +415,11 @@ func main() {
 	if ok {
 		if len(args) < 1 {
 			fmt.Println("Gimme id to view")
+		}
+
+		if !isExistingId(db, args) {
+			fmt.Println("ID does not exist")
+			return
 		}
 
 		id := args[0]
