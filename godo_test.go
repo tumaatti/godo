@@ -93,3 +93,17 @@ func TestFilterArgsListTags(t *testing.T) {
 
 func TestGetKeyArgs(t *testing.T) {
 }
+
+func TestSlicesEqual(t *testing.T) {
+	res := slicesEqual([]string{"1", "3", "5"}, []string{"1", "3", "5"})
+	if res == false {
+		t.Fatal(`expected true got false`)
+	}
+}
+
+func TestSlicesEqualFalse(t *testing.T) {
+	res := slicesEqual([]string{"1", "3", "5"}, []string{"1", "2", "5"})
+	if res == true {
+		t.Fatal(`expected false got true`)
+	}
+}
