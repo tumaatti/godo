@@ -226,6 +226,10 @@ func main() {
 			}
 
 			content, tags, done = TmpFile.parseFile()
+			if len(content) == 0 {
+				fmt.Println("Empty content, database not updated")
+				return
+			}
 		}
 
 		db.Create(&Todo{
@@ -325,6 +329,11 @@ func main() {
 		}
 
 		content, tags, done := TmpFile.parseFile()
+
+		if len(content) == 0 {
+			fmt.Println("Empty content, database not updated")
+			return
+		}
 
 		db.Model(&todo).Where("Id = ?", id).Updates(map[string]interface{}{"Content": content, "Tags": tags, "Done": done})
 		return
