@@ -395,6 +395,7 @@ func main() {
 		}
 
 		id := args
+		// TODO: add ability to delete multiple todos at a time
 		db.Delete(&todo, id)
 		return
 	}
