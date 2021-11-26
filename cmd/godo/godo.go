@@ -201,7 +201,7 @@ func main() {
 	directoryName := homeDir + "/.TODO"
 	filepath := directoryName + "/todos.db"
 
-	dbFile := File{filepath: filepath}
+	dbFile := File{directoryName: directoryName, filepath: filepath}
 	dbFile.createDirIfDoesNotExist()
 
 	db, err := gorm.Open(sqlite.Open(dbFile.filepath), &gorm.Config{})

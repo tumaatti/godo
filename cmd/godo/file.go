@@ -8,12 +8,13 @@ import (
 )
 
 type File struct {
-	filepath string
-	content  []byte
+	directoryName string
+	filepath      string
+	content       []byte
 }
 
 func (file File) createDirIfDoesNotExist() {
-	_, err := os.Stat(file.filepath)
+	_, err := os.Stat(file.directoryName)
 
 	if os.IsNotExist(err) {
 		os.Mkdir(file.filepath, 0755)
