@@ -39,11 +39,11 @@ func TestUnFormatCheckMarkFalse(t *testing.T) {
 }
 
 func TestParseFile(t *testing.T) {
-	testContent := []byte("DONE:[ ];TAGS:penispenis\nsome text")
+	testContent := []byte("DONE:[ ];TAGS:penispenis, penis2\nsome text")
 	tmpFile := File{content: testContent}
 
 	wantedContent := "some text"
-	wantedTags := "penispenis"
+	wantedTags := "penispenis, penis2"
 	wantedDone := false
 	content, tags, done := tmpFile.parseFile()
 
