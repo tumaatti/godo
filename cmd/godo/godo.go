@@ -148,7 +148,7 @@ func slicesEqual(s1, s2 []string) bool {
 	return true
 }
 
-func isExistingId(db *gorm.DB, inputIds []string) bool {
+func isExistingInDB(db *gorm.DB, inputIds []string) bool {
 	var dbTodos []Todo
 
 	existingIds := make(map[int]bool)
@@ -332,7 +332,7 @@ func main() {
 			return
 		}
 
-		if !isExistingId(db, args) {
+		if !isExistingInDB(db, args) {
 			fmt.Println("ID does not exist")
 			return
 		}
@@ -350,7 +350,7 @@ func main() {
 			return
 		}
 
-		if !isExistingId(db, args) {
+		if !isExistingInDB(db, args) {
 			fmt.Println("ID does not exist")
 			return
 		}
@@ -391,7 +391,7 @@ func main() {
 			return
 		}
 
-		if !isExistingId(db, args) {
+		if !isExistingInDB(db, args) {
 			fmt.Println("ID does not exist")
 			return
 		}
@@ -417,7 +417,7 @@ func main() {
 			fmt.Println("Gimme id to view")
 		}
 
-		if !isExistingId(db, args) {
+		if !isExistingInDB(db, args) {
 			fmt.Println("ID does not exist")
 			return
 		}
