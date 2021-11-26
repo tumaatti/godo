@@ -243,7 +243,7 @@ func main() {
 		todo = Todo{
 			Content: content,
 			Tags:    tags,
-			Done:    false,
+			Done:    done,
 		}
 
 		if editok {
@@ -260,19 +260,17 @@ func main() {
 				log.Fatalf("%+v\n", err)
 			}
 
-			content, tags, done = TmpFile.parseFile()
+			todo.Content, todo.Tags, todo.Done = TmpFile.parseFile()
+
 			if len(content) == 0 {
 				fmt.Println("Empty content, database not updated")
 				return
 			}
 		}
 
-		db.Create(&Todo{
-			CreatedAt: time.Now().Local().Format(time.Stamp),
-			Content:   content,
-			Tags:      tags,
-			Done:      done,
-		})
+		todo.CreatedAt = time.Now().Local().Format(time.Stamp)
+
+		db.Create(&todo)
 		return
 	}
 
@@ -397,6 +395,7 @@ func main() {
 		}
 
 		id := args
+		// TODO: add ability to delete multiple todos at a time
 		db.Delete(&todo, id)
 		return
 	}
