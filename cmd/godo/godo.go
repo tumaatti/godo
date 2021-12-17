@@ -36,13 +36,14 @@ func unFormatCheckMark(checkMark string) bool {
 func getHelp() string {
 	return "Godo is a simple TODO-tool\n" +
 		"Usage:\n" +
-		"    --new -n <contents>  add new TODO row to database\n" +
-		"    --edit -e <id>       edit existing TODO\n" +
-		"    --list -l            list all existing TODOs\n" +
-		"    --done -x <id>       mark TODO as done\n" +
-		"    --delete -d <id>     delete existing TODO\n" +
-		"    --view -v <id>       view single TODO\n" +
-		"    --tags -t            add and sort by tags\n"
+		"    new n <contents>  add new TODO row to database\n" +
+		"    edit e <id>       edit existing TODO\n" +
+		"    list l            list all existing TODOs\n" +
+		"    done x <id>       mark TODO as done\n" +
+		"    delete d <id>     delete existing TODO\n" +
+		"    view v <id>       view single TODO\n" +
+		"    --tags -t         filter by tags\n" +
+		"    --edit -e         use as argument with new command\n"
 }
 
 type CommandMap map[string][]string
@@ -58,26 +59,34 @@ func (commands CommandMap) getKeyArgs(commandName string, shortCommandName strin
 	return args, ok
 }
 
-func isValidCommand(command string) bool {
+func isValidOption(command string) bool {
 	switch command {
 	case
 		"--created",
-		"--delete",
-		"--done",
-		"--edit",
-		"--list",
-		"--new",
 		"--tag",
-		"--view",
 		"-c",
-		"-d",
-		"-e",
 		"-h",
-		"-l",
-		"-n",
-		"-t",
-		"-v",
-		"-x":
+		"-t":
+		return true
+	}
+	return false
+}
+
+func isValidCommand(command string) bool {
+	switch command {
+	case
+		"delete",
+		"done",
+		"edit",
+		"list",
+		"new",
+		"view",
+		"d",
+		"e",
+		"l",
+		"n",
+		"v",
+		"x":
 		return true
 	}
 	return false
@@ -87,14 +96,19 @@ func isValidCommand(command string) bool {
 // also maybe use an interface for next etc in the list?
 func filterArguments(args []string) CommandMap {
 	var validCommandIndeces []int
+	var commandArgsMap = make(CommandMap)
+
+	if isValidCommand(args[1]) {
+		validCommandIndeces = append(validCommandIndeces, 1)
+	} else {
+		return commandArgsMap
+	}
 
 	for i, arg := range args {
-		if isValidCommand(arg) {
+		if isValidOption(arg) {
 			validCommandIndeces = append(validCommandIndeces, i)
 		}
 	}
-
-	var commandArgsMap = make(CommandMap)
 
 	if len(validCommandIndeces) == 1 {
 		command := args[validCommandIndeces[0]]
@@ -214,7 +228,7 @@ func main() {
 
 	db.AutoMigrate(&todo)
 
-	args, ok := commands.getKeyArgs("--new", "-n")
+	args, ok := commands.getKeyArgs("new", "n")
 
 	// --new -n
 	if ok {
@@ -274,7 +288,7 @@ func main() {
 		return
 	}
 
-	args, ok = commands.getKeyArgs("--list", "-l")
+	args, ok = commands.getKeyArgs("list", "l")
 
 	// --list -l
 	if ok {
@@ -321,7 +335,7 @@ func main() {
 		return
 	}
 
-	args, ok = commands.getKeyArgs("--done", "-x")
+	args, ok = commands.getKeyArgs("done", "x")
 
 	// --done -x
 	if ok {
@@ -339,7 +353,7 @@ func main() {
 		return
 	}
 
-	args, ok = commands.getKeyArgs("--edit", "-e")
+	args, ok = commands.getKeyArgs("edit", "e")
 
 	// --edit -e
 	if ok {
@@ -380,7 +394,7 @@ func main() {
 		return
 	}
 
-	args, ok = commands.getKeyArgs("--delete", "-d")
+	args, ok = commands.getKeyArgs("delete", "d")
 
 	// --delete -d
 	if ok {
@@ -408,7 +422,7 @@ func main() {
 		return
 	}
 
-	args, ok = commands.getKeyArgs("--view", "-v")
+	args, ok = commands.getKeyArgs("view", "v")
 
 	// --view
 	if ok {
