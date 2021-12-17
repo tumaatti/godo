@@ -162,7 +162,7 @@ func slicesEqual(s1, s2 []string) bool {
 	return true
 }
 
-func isExistingId(db *gorm.DB, inputIds []string) bool {
+func isExistingInDB(db *gorm.DB, inputIds []string) bool {
 	var dbTodos []Todo
 
 	existingIds := make(map[int]bool)
@@ -215,7 +215,7 @@ func main() {
 	directoryName := homeDir + "/.TODO"
 	filepath := directoryName + "/todos.db"
 
-	dbFile := File{filepath: filepath}
+	dbFile := File{directoryName: directoryName, filepath: filepath}
 	dbFile.createDirIfDoesNotExist()
 
 	db, err := gorm.Open(sqlite.Open(dbFile.filepath), &gorm.Config{})
@@ -243,14 +243,8 @@ func main() {
 		// if edited on creation
 		done := false
 
-		tagArgs, ok := commands.getKeyArgs("--tags", "-t")
-		var tags string
-
-		if !ok || len(tagArgs) == 0 {
-			tags = ""
-		} else {
-			tags = strings.Join(tagArgs, ", ")
-		}
+		tagArgs, _ := commands.getKeyArgs("--tag", "-t")
+		tags := strings.Join(tagArgs, ", ")
 
 		content := strings.Join(args, " ")
 
@@ -296,10 +290,11 @@ func main() {
 		var undones []Todo
 
 		args, ok := commands.getKeyArgs("--tag", "-t")
+		tags := "%" + strings.Join(args, ", ") + "%" // format to "fuzzy" find format in database tags-string
+
 		if ok {
-			tags := args
-			db.Where("Tags = ? AND Done = ?", tags, true).Find(&dones)
-			db.Where("Tags = ? AND Done = ?", tags, false).Find(&undones)
+			db.Where("Tags LIKE ? AND Done = ?", tags, true).Find(&dones)
+			db.Where("Tags LIKE ? AND Done = ?", tags, false).Find(&undones)
 		} else {
 			db.Where("Done = ?", true).Find(&dones)
 			db.Where("Done = ?", false).Find(&undones)
@@ -344,7 +339,7 @@ func main() {
 			return
 		}
 
-		if !isExistingId(db, args) {
+		if !isExistingInDB(db, args) {
 			fmt.Println("ID does not exist")
 			return
 		}
@@ -362,7 +357,7 @@ func main() {
 			return
 		}
 
-		if !isExistingId(db, args) {
+		if !isExistingInDB(db, args) {
 			fmt.Println("ID does not exist")
 			return
 		}
@@ -403,7 +398,7 @@ func main() {
 			return
 		}
 
-		if !isExistingId(db, args) {
+		if !isExistingInDB(db, args) {
 			fmt.Println("ID does not exist")
 			return
 		}
@@ -430,7 +425,7 @@ func main() {
 			fmt.Println("Gimme id to view")
 		}
 
-		if !isExistingId(db, args) {
+		if !isExistingInDB(db, args) {
 			fmt.Println("ID does not exist")
 			return
 		}

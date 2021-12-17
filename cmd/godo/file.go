@@ -8,12 +8,13 @@ import (
 )
 
 type File struct {
-	filepath string
-	content  []byte
+	directoryName string
+	filepath      string
+	content       []byte
 }
 
 func (file File) createDirIfDoesNotExist() {
-	_, err := os.Stat(file.filepath)
+	_, err := os.Stat(file.directoryName)
 
 	if os.IsNotExist(err) {
 		os.Mkdir(file.filepath, 0755)
@@ -34,8 +35,6 @@ func (file File) editInNvim() {
 }
 
 func (file File) parseFile() (string, string, bool) {
-	var tags string
-
 	splitByLines := strings.Split(string(file.content), "\n")
 	contentList := splitByLines[1:]
 	content := strings.Join(contentList, "\n")
@@ -46,13 +45,8 @@ func (file File) parseFile() (string, string, bool) {
 	checkBox := strings.TrimSpace(strings.Split(splitTagsRow[0], ":")[1])
 	done := unFormatCheckMark(checkBox)
 
-	tagsList := strings.Split(splitTagsRow[1], ":")
-
-	if len(tagsList) < 2 {
-		tags = ""
-	} else {
-		tags = strings.TrimSpace(tagsList[1])
-	}
+	tagsList := strings.Split(splitTagsRow[1], ":")[1:]
+	tags := strings.TrimSpace(strings.Join(tagsList, ", "))
 
 	return content, tags, done
 }
