@@ -64,9 +64,11 @@ func isValidOption(command string) bool {
 	case
 		"--created",
 		"--tag",
+		"--showAll",
 		"-c",
 		"-h",
-		"-t":
+		"-t",
+		"-S":
 		return true
 	}
 	return false
@@ -181,7 +183,13 @@ func isExistingInDB(db *gorm.DB, inputIds []string) bool {
 	}
 
 	return slicesEqual(matchingIds, inputIds)
+}
 
+func max(value1, value2 int) int {
+	if value1 <= value2 {
+		return value2
+	}
+	return value1
 }
 
 func main() {
@@ -306,10 +314,18 @@ func main() {
 		}
 
 		_, Cok := commands.getKeyArgs("--created", "-c")
+		_, getDone := commands.getKeyArgs("--showAll", "-s")
 
-		todos := append(dones, undones...)
+		var maxDones int
 
-		maxLen := findMaxIdLength(todos)
+		if getDone {
+			maxDones = findMaxIdLength(dones)
+		} else {
+			maxDones = 0
+		}
+
+		maxUndones := findMaxIdLength(undones)
+		maxLen := max(maxDones, maxUndones)
 
 		for _, t := range undones {
 			t.printRowString(commands, Cok, maxLen)
@@ -319,8 +335,10 @@ func main() {
 			fmt.Println("")
 		}
 
-		for _, t := range dones {
-			t.printRowString(commands, Cok, maxLen)
+		if getDone {
+			for _, t := range dones {
+				t.printRowString(commands, Cok, maxLen)
+			}
 		}
 
 		if err != nil {
